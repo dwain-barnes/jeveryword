@@ -30,7 +30,9 @@ The server sets `HF_HUB_OFFLINE=1`, so nothing is fetched after the download. It
 or Apple GPU when there is one. On CPU it works, but a message takes a few seconds. Set
 `D1_PORT` to move it off 8411.
 
-The JavaScript side has no dependencies and needs Node 20 or later.
+The JavaScript side has no dependencies and needs Node 20 or later. Its client,
+`createLocalClient()`, only accepts a localhost address, refuses redirects and has no fallback:
+if the server is down, a call fails rather than the text going anywhere else.
 
 ## Finding PII
 
