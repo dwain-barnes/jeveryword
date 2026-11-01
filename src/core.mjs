@@ -118,6 +118,22 @@ export function tokenize(text, { chunker = chunkers.tokens, prefix = '' } = {}) 
   return doc;
 }
 
+// d1 answers a text question with { text, span, found }, the span in code points (Python string
+// indexes). JavaScript indexes UTF-16 units, so convert, and check the span really holds the value
+// before anything is copied or redacted with it.
+export function readSpan(text, answer, what) {
+  const found = answer?.found;
+  if (!Number.isFinite(found) || found < 0 || found > 1) throw fail('invalid_answer', `The model function's answer for ${what} must be { text, span, found } with found between 0 and 1.`);
+  if (answer.text === null || answer.text === undefined) return { found, value: null };
+  const points = Array.from(text);
+  const [a, b] = Array.isArray(answer.span) ? answer.span : [];
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b <= a || b > points.length) throw fail('invalid_answer', `The model function's span for ${what} is not inside the text.`);
+  const start = points.slice(0, a).join('').length;
+  const end = start + points.slice(a, b).join('').length;
+  if (text.slice(start, end) !== answer.text) throw fail('invalid_answer', `The model function's span for ${what} does not hold the value it returned.`);
+  return { found, value: answer.text, start, end };
+}
+
 // Adjacent chunks that share a label and clear the threshold, joined back into text spans
 // (for highlighting or redaction). A joined span reports its weakest chunk's score.
 export function mergeChunks(text, detections, { threshold = 0.5, key = 'label', joinable = /^[\s,]*$/u } = {}) {

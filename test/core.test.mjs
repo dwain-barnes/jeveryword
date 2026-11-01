@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tokenize, chunkers, mergeChunks, classifyChunks } from '../src/index.mjs';
-import { detectPII } from '../examples/pii.mjs';
 
 test('every chunk maps back to its exact source text, including Unicode', () => {
   for (const chunker of Object.values(chunkers)) {
@@ -75,12 +74,4 @@ test('mergeChunks joins neighbours with the same label and keeps the weakest sco
   const d = (t, label, score) => ({ label, score, start: text.indexOf(t), end: text.indexOf(t) + t.length });
   assert.deepEqual(mergeChunks(text, [d('Maya', 'name', .9), d('Chen', 'name', .7), d('now', 'name', .2)], { threshold: .5 }),
     [{ label: 'name', start: 5, end: 14, score: .7, value: 'Maya Chen' }]);
-});
-
-test('PII example: binary mode uses two options and reports category + slider score', async () => {
-  const result = await detectPII({ text: 'Maya', mode: 'binary', evaluate: async ({ questions }) => {
-    assert.deepEqual(questions.c0.criteria, { pii: null, none: null });
-    return { answers: { c0: { choice: 'pii', probabilities: { pii: .85, none: .15 } } }, usage: { input_tokens: 100 } };
-  } });
-  assert.deepEqual([result.mode, result.detections[0].category, result.detections[0].score], ['binary', 'pii', .85]);
 });

@@ -1,20 +1,8 @@
 import type { Evaluate } from './index.js';
-export interface JevClientOptions {
-  /** TypeSafe API key. With `gateway` also set, this is the fallback route. */
-  apiKey?: string;
-  /** Vercel AI Gateway credentials; tried first when present. */
-  gateway?: { token: string; authMethod?: 'api-key' | 'oidc' };
-  model?: string;
-  /** Per-request timeout. Default 30,000 ms. */
+export interface LocalClientOptions {
+  /** Where server/d1_server.py listens. Must be 127.0.0.1, localhost or [::1]. */
+  url?: string;
+  /** Per-request timeout. Default 120,000 ms, since a CPU-only machine is slow. */
   timeoutMs?: number;
-  /** Timeout for a route that has a fallback behind it (the gateway). Default 4,000 ms. */
-  fallbackTimeoutMs?: number;
-  onRetry?: (event: { retry: number; delayMs: number; message: string }) => unknown;
-  onFallback?: (event: { from: string; to: string; message: string }) => unknown;
-  sleep?: (ms: number) => Promise<unknown>;
-  shouldContinue?: () => boolean;
 }
-export function createJevClient(options: JevClientOptions): Evaluate & { readonly endpoint: string; readonly model: string; readonly provider: 'typesafe' | 'gateway' };
-/** AI Gateway credentials for the current Vercel project (OIDC, no key needed), or undefined off Vercel. */
-export function vercelGateway(request?: Request, env?: Record<string, string | undefined>): { token: string; authMethod: 'api-key' | 'oidc' } | undefined;
-export function retryDelay(value: string | null | undefined, retry: number, now?: number): number;
+export function createLocalClient(options?: LocalClientOptions): Evaluate & { readonly endpoint: string; readonly model: string; readonly provider: 'local' };

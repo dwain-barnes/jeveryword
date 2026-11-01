@@ -30,13 +30,11 @@ export async function classifyChunks({ text, labels, evaluate, rules = '', none 
     let response;
     try { response = await evaluate({ state, questions }); }
     catch (error) {
-      calls += (error.httpAttempts ?? 1) - 1;
       if (error.code !== 'max_tokens_exceeded' || batch.length === 1) throw error;
       batchSize = Math.max(1, Math.floor(batch.length / 2));
       await onBatch({ call: calls, retry: true, message: `Reducing batch to ${batchSize} chunks after token limit.` });
       continue;
     }
-    calls += response.rateLimitRetries ?? 0;
     for (const c of batch) {
       const answer = response.answers?.[`c${c.id}`];
       const probabilities = answer?.probabilities;

@@ -1,7 +1,7 @@
 {
   "name": "jeveryword",
-  "version": "0.1.2",
-  "description": "Field extraction, PII detection and exact quotes, built on TypeSafe's Jev. It numbers the words of a text, Jev picks numbers, and you get the exact substring back with offsets and a probability.",
+  "version": "0.2.0",
+  "description": "Field extraction and PII redaction with exact offsets, run on LiquidAI's d1-2B on your own machine. A fork of jkrup/jeveryword that no longer calls TypeSafe's hosted Jev.",
   "type": "module",
   "exports": {
     ".": {
@@ -21,18 +21,19 @@
   "files": [
     "src",
     "examples",
-    "skills"
+    "server"
   ],
   "scripts": {
     "test": "node --test"
   },
   "keywords": [
-    "jev",
-    "typesafe",
+    "d1",
+    "liquid",
+    "local",
     "extraction",
     "pii",
+    "redaction",
     "span",
-    "tokens",
     "structured-data"
   ],
   "license": "MIT",

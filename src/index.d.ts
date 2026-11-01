@@ -31,44 +31,39 @@ export function mergeChunks<K extends string = 'label'>(text: string, detections
 export interface Usage { input_tokens: number; output_tokens: number }
 export interface ChoiceQuestion { type: 'choice'; instructions: string; criteria: Record<string, string | null> }
 export interface ChoiceAnswer { choice: string; probabilities: Record<string, number>; confidence?: number }
-export interface EvaluateRequest { state: unknown; questions: Record<string, ChoiceQuestion> }
-export interface EvaluateResponse { answers: Record<string, ChoiceAnswer>; model?: string; usage?: Usage; provider?: string; rateLimitRetries?: number }
+/** A value d1 reads from the state. `span` is in code points; `readSpan` converts it. */
+export interface TextQuestion { type: 'text'; instructions: string }
+export interface TextAnswer { text: string | null; span: [number, number] | null; found: number }
+export interface EvaluateRequest { state: unknown; questions: Record<string, ChoiceQuestion | TextQuestion> }
+export interface EvaluateResponse { answers: Record<string, ChoiceAnswer | TextAnswer>; model?: string; usage?: Usage; provider?: string }
 /**
- * The only thing the pipelines need from a model. TypeSafe's SDK fits as-is:
- * `request => client.systemOne(request)`. Throw an error with `code: 'max_tokens_exceeded'`
- * to let a pipeline shrink its request and retry.
+ * The only thing the pipelines need from a model: `createLocalClient()`, or anything that answers
+ * the same way. Throw an error with `code: 'max_tokens_exceeded'` to let classifyChunks shrink its batch.
  */
 export type Evaluate = (request: EvaluateRequest) => Promise<EvaluateResponse>;
+/** A text answer as offsets into `text`, checked to hold the value; `value` is null when nothing was found. */
+export function readSpan(text: string, answer: TextAnswer, what: string): { found: number; value: string; start: number; end: number } | { found: number; value: null };
 
 export interface Field { id: string; description: string }
 export type FieldResult =
-  | { status: 'extracted'; value: string; start: number; end: number; tokenStart: number; tokenEnd: number; probability: number }
-  | { status: 'missing' | 'ambiguous'; value: null; probability: number };
-export interface Decision { field: string; boundary: 'locate' | 'start' | 'end' | 'verify'; range: [number, number]; choice?: string; probabilities?: Record<string, number>; confidence?: number; speculative?: boolean; accepted?: boolean; candidates?: Record<string, string> }
-export interface Round { call: number; boundary: 'locate' | 'start' | 'end' | 'verify'; durationMs: number; decisions: Decision[]; model?: string; provider?: string; usage?: Usage; speculative?: boolean; retry?: boolean; recovery?: string; request?: EvaluateRequest }
-export interface ExtractOptions {
-  text: string;
-  fields: Field[];
-  evaluate: Evaluate;
-  /** Options per question, 2..253. Default 253 (point straight at a token). */
-  fanout?: number;
-  /** Ask for span ends alongside starts. Default true. */
-  speculate?: boolean;
-  minSpeculativeProbability?: number;
-  /** Long text: find each field's sentence first. Default true. */
-  locate?: boolean;
-  /** Settle boundaries that have a rival token by comparing candidate spans. Default true. */
-  verify?: boolean;
-  /** A rival is any other token with at least this probability. Default 0.15. */
-  rivalProbability?: number;
-  trimPunctuation?: boolean;
-  onRound?: (round: Round) => unknown;
-  includeRequests?: boolean;
-}
-export interface ExtractResult { results: Record<string, FieldResult>; calls: number; inputTokens: number; durationMs: number; tokenCount: number; fanout: number; effectiveFanout: number; trace: Round[] }
-/** Thrown errors carry `code`: 'invalid_input', 'invalid_answer', and from the bundled client 'max_tokens_exceeded' or 'rate_limited'. */
-export type JeverywordErrorCode = 'invalid_input' | 'invalid_answer' | 'max_tokens_exceeded' | 'rate_limited';
+  | { status: 'extracted'; value: string; start: number; end: number; probability: number }
+  | { status: 'missing'; value: null; probability: number };
+export interface ExtractOptions { text: string; fields: Field[]; evaluate: Evaluate }
+export interface ExtractResult { results: Record<string, FieldResult>; calls: number; inputTokens: number; durationMs: number }
+/** Thrown errors carry `code`: 'invalid_input', 'invalid_answer', and from the bundled client 'max_tokens_exceeded'. */
+export type JeverywordErrorCode = 'invalid_input' | 'invalid_answer' | 'max_tokens_exceeded';
 export function extractSpans(options: ExtractOptions): Promise<ExtractResult>;
+
+export interface Span { label: string; value: string; start: number; end: number; score: number }
+export interface FindOptions {
+  text: string;
+  /** Kind id → plain-English description, e.g. { email: 'An email address.' }. */
+  kinds: Record<string, string>;
+  evaluate: Evaluate;
+  /** Most requests to make. Each finds at most one more span per kind. Default 50. */
+  rounds?: number;
+}
+export function findSpans(options: FindOptions): Promise<{ spans: Span[]; calls: number; inputTokens: number; durationMs: number }>;
 
 export interface Detection { id: number; value: string; start: number; end: number; label: string; score: number; probabilities: Record<string, number> }
 export interface ClassifyOptions {
@@ -85,4 +80,4 @@ export interface ClassifyOptions {
 }
 export function classifyChunks(options: ClassifyOptions): Promise<{ detections: Detection[]; calls: number; inputTokens: number; durationMs: number; trace: unknown[] }>;
 
-export { createJevClient, vercelGateway, type JevClientOptions } from './client.js';
+export { createLocalClient, type LocalClientOptions } from './client.js';

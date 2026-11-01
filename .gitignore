@@ -2,3 +2,4 @@ node_modules/
 .env
 .env.*
 results/
+__pycache__/

@@ -1,19 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractSpans, classifyChunks, mergeChunks } from '../src/index.mjs';
+import { extractSpans, findSpans, classifyChunks, mergeChunks } from '../src/index.mjs';
 import { stubEvaluate } from '../src/testing.mjs';
 
-test('stubEvaluate drives extractSpans: short text, long text, and missing fields', async () => {
-  const filler = 'This sentence is only padding and says nothing useful at all. ';
+test('stubEvaluate drives extractSpans and findSpans', async () => {
+  const text = 'Table for six, under Dana Whitfield. Dana will pay.';
   const fields = [{ id: 'name', description: 'full name' }, { id: 'phone', description: 'phone number' }, { id: 'size', description: 'party size' }];
-  for (const text of ['Table for six, under Dana Whitfield.', filler.repeat(15) + 'Table for six, under Dana Whitfield. ' + filler.repeat(15)]) {
-    const evaluate = stubEvaluate({ text, fields, values: { name: 'Dana Whitfield', size: 'six', phone: null } });
-    const { results } = await extractSpans({ text, fields, evaluate });
-    assert.deepEqual([results.name.value, results.size.value, results.phone.status], ['Dana Whitfield', 'six', 'missing']);
-    for (const r of Object.values(results)) if (r.status === 'extracted') assert.equal(text.slice(r.start, r.end), r.value);
-    assert.ok(evaluate.calls >= 1);
-  }
-  assert.throws(() => stubEvaluate({ text: 'abc', fields, values: { name: 'zzz' } }), /not a run of whole tokens/);
+  const { results } = await extractSpans({ text, fields, evaluate: stubEvaluate({ text, values: { name: 'Dana Whitfield', size: 'six', phone: null } }) });
+  assert.deepEqual([results.name.value, results.size.value, results.phone.status], ['Dana Whitfield', 'six', 'missing']);
+  const { spans } = await findSpans({ text, kinds: { name: 'A name.' }, evaluate: stubEvaluate({ text, values: { name: ['Dana Whitfield', 'Dana'] } }) });
+  assert.deepEqual(spans.map(s => [s.value, s.start]), [['Dana Whitfield', 21], ['Dana', 37]]);
+  assert.throws(() => stubEvaluate({ text: 'abc', values: { name: 'zzz' } }), /not in the text/);
 });
 
 test('stubEvaluate drives classifyChunks', async () => {
